@@ -1,0 +1,78 @@
+digraph Booksearch {
+    graph [
+        rankdir=TB,
+        bgcolor="#ffffff",
+        pad="0.35",
+        nodesep="0.55",
+        ranksep="0.9",
+        splines=polyline,
+        fontname="DejaVu Sans",
+        fontsize=20,
+        labelloc=t,
+        label="Booksearch: proposed extraction and search classes\nIndependent extraction, matching, and execution strategies"
+    ];
+    node [
+        shape=record,
+        style=filled,
+        fillcolor="#f4f7fc",
+        color="#405570",
+        fontname="DejaVu Sans",
+        fontsize=12,
+        margin="0.16,0.12"
+    ];
+    edge [
+        color="#405570",
+        fontcolor="#273951",
+        fontname="DejaVu Sans",
+        fontsize=11,
+        arrowsize=0.85
+    ];
+
+    SequentialRunner [label="{SequentialRunner|+ SequentialRunner(factory: ProcessorFactory)\l+ run(tasks, query, output: MatchSink): void\l}"];
+    ParallelRunner [label="{ParallelRunner|+ ParallelRunner(workers: size_t, factory: ProcessorFactory)\l+ run(tasks, query, output: MatchSink): void\l}"];
+    Processor [fillcolor="#e3eefc", label="{Processor|+ Processor(extractor, matcher)\l+ search(input: DocumentInput, query: Query): Matches\l}"];
+    EpubDocumentLoader [label="{EpubDocumentLoader|+ load(task: DocumentTask): DocumentInput\l}"];
+    Extractor [fillcolor="#e9f5ef", label="{\<\<interface\>\>\nExtractor|+ extract(input: DocumentInput): ExtractedDocument\l}"];
+    Matcher [fillcolor="#e9f5ef", label="{\<\<interface\>\>\nMatcher|+ search(document: ExtractedDocument, query: Query): Matches\l}"];
+    MatchSink [fillcolor="#e9f5ef", label="{\<\<interface\>\>\nMatchSink|+ write(matches: Matches): void\l}"];
+    TreeExtractor [label="{TreeExtractor|Build and traverse an XML tree\l}"];
+    StreamingExtractor [label="{StreamingExtractor|Extract using XML events\l}"];
+    SimpleMatcher [label="{SimpleMatcher|Straightforward substring search\l}"];
+    BoyerMooreHorspoolMatcher [label="{BoyerMooreHorspoolMatcher|Alternative substring search\l}"];
+    JsonLinesMatchSink [label="{JsonLinesMatchSink|+ JsonLinesMatchSink(output: ostream)\l+ write(matches: Matches): void\l}"];
+
+    { rank=same; SequentialRunner; ParallelRunner; }
+    { rank=same; EpubDocumentLoader; Processor; MatchSink; }
+    { rank=same; Extractor; Matcher; JsonLinesMatchSink; }
+    { rank=same; TreeExtractor; StreamingExtractor; SimpleMatcher; BoyerMooreHorspoolMatcher; }
+
+    SequentialRunner -> Processor [dir=both, arrowtail=diamond, arrowhead=none, label="owns 1"];
+    ParallelRunner -> Processor [dir=both, arrowtail=diamond, arrowhead=none, label="owns 1 per worker"];
+    SequentialRunner -> EpubDocumentLoader [dir=both, arrowtail=diamond, arrowhead=none, label="owns 1"];
+    ParallelRunner -> EpubDocumentLoader [dir=both, arrowtail=diamond, arrowhead=none, label="owns 1 per worker"];
+    SequentialRunner -> MatchSink [style=dashed, label="writes results"];
+    ParallelRunner -> MatchSink [style=dashed, label="writes ordered results\non calling thread"];
+    Processor -> Extractor [dir=both, arrowtail=diamond, arrowhead=none, label="owns 1"];
+    Processor -> Matcher [dir=both, arrowtail=diamond, arrowhead=none, label="owns 1"];
+    TreeExtractor -> Extractor [style=dashed, arrowhead=empty, constraint=false];
+    StreamingExtractor -> Extractor [style=dashed, arrowhead=empty, constraint=false];
+    SimpleMatcher -> Matcher [style=dashed, arrowhead=empty, constraint=false];
+    BoyerMooreHorspoolMatcher -> Matcher [style=dashed, arrowhead=empty, constraint=false];
+    JsonLinesMatchSink -> MatchSink [style=dashed, arrowhead=empty, constraint=false];
+
+    // Keep implementations below their interfaces while arrows point to the interface.
+    Extractor -> TreeExtractor [style=invis];
+    Extractor -> StreamingExtractor [style=invis];
+    Matcher -> SimpleMatcher [style=invis];
+    Matcher -> BoyerMooreHorspoolMatcher [style=invis];
+    MatchSink -> JsonLinesMatchSink [style=invis];
+
+    legend [
+        shape=note,
+        fillcolor="#fff9e8",
+        color="#b9a265",
+        fontsize=11,
+        label="UML notation\lFilled diamond at owner: composition\lDashed line + hollow triangle: implements interface\lDashed arrow: dependency\l\lProcessorFactory creates an independent Processor.\lDocumentInput owns filename, documentPath, and body.\lExtractedDocument contains text and source mappings.\lMatches own their text and source locations.\lQuery is immutable during a run.\l\lDocumentInput is implemented.\lThe remaining API is proposed.\l"
+    ];
+    BoyerMooreHorspoolMatcher -> legend [style=invis];
+}
